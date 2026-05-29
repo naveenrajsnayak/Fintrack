@@ -1,4 +1,4 @@
-name: Auto Deploy on Commit
+name: Auto Deploy to Railway on Commit
 
 on:
   push:
@@ -22,39 +22,16 @@ jobs:
       - name: Install dependencies
         run: npm install
       
-      - name: Build Docker image
-        run: docker build -t fintrack:${{ github.sha }} .
-      
       - name: Run tests (if any)
         run: npm test --if-present
       
-      - name: Deploy notification
-        run: echo "✅ Fintrack v1.0.0 deployed successfully on commit ${{ github.sha }}"
-
-  # Option: Push to Docker Hub or container registry
-  push-to-registry:
-    needs: build-and-deploy
-    runs-on: ubuntu-latest
-    if: success()
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Deploy to Railway
+        uses: railway-app/cli-action@v1
         with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          token: ${{ secrets.RAILWAY_TOKEN }}
+          service: fintrack
+        env:
+          RAILWAY_ENVIRONMENT: production
       
-      - name: Build and push to Docker Hub
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/fintrack:latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/fintrack:${{ github.sha }}
+      - name: Deployment success
+        run: echo "✅ Fintrack deployed successfully to Railway on commit ${{ github.sha }}"
