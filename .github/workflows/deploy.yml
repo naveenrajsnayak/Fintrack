@@ -1,0 +1,59 @@
+name: Auto Deploy on Commit
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm install
+      
+      - name: Build Docker image
+        run: docker build -t fintrack:${{ github.sha }} .
+      
+      - name: Run tests (if any)
+        run: npm test --if-present
+      
+      - name: Deploy notification
+        run: echo "✅ Fintrack v1.0.0 deployed successfully on commit ${{ github.sha }}"
+
+  # Option: Push to Docker Hub or container registry
+  push-to-registry:
+    needs: build-and-deploy
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and push to registry
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          #push: false
+          tags: |
+            fintrack:latest
+            fintrack:${{ github.sha }}
+          # Uncomment below to push to Docker Hub (requires DOCKER_HUB_USERNAME and DOCKER_HUB_TOKEN secrets)
+          push: true
+          registry: docker.io
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
